@@ -303,7 +303,7 @@ def _accept_follow_request(request: HttpRequest, user: 'User', logined_user: 'Us
 def _reject_follow_request(request: HttpRequest, user: 'User', logined_user: 'User'):
     request = FollowRequest.objects.filter(follower=user, followee=logined_user).first()
     request.decline()
-    response = JsonResponse(
+    return JsonResponse(
         {
             'success': True,
             'followed': False,
@@ -311,8 +311,6 @@ def _reject_follow_request(request: HttpRequest, user: 'User', logined_user: 'Us
             'followings': user.followings_count,
         }
     )
-
-    return response
 
 
 @login_required(login_url='user-login')
@@ -327,14 +325,13 @@ def block_user(request: HttpRequest, username: str):
             },
             status=400
         )
-    else:
-        org_user.block(user)
-        return JsonResponse(
-            {
-                'success': True,
-                'blocked': True,
-            }
-        )
+    org_user.block(user)
+    return JsonResponse(
+        {
+            'success': True,
+            'blocked': True,
+        }
+    )
 
 
 @login_required(login_url='user-login')
@@ -349,14 +346,13 @@ def unblock_user(request: HttpRequest, username: str):
             },
             status=400
         )
-    else:
-        org_user.unblock(user)
-        return JsonResponse(
-            data={
-                'success': True,
-                'blocked': False
-            }
-        )
+    org_user.unblock(user)
+    return JsonResponse(
+        data={
+            'success': True,
+            'blocked': False
+        }
+    )
 
 
 @login_required(login_url='user-login')
@@ -418,7 +414,11 @@ def settings_update_profile(request: HttpRequest):
                 email=email,
                 otp__exact=email_otp
             ).first()
-            if email_verification and not email_verification.verified:
+            if (
+                email_verification
+                and not email_verification.verified
+                or not email_verification
+            ):
                 response = JsonResponse(
                     data={
                         'success': False,
@@ -427,17 +427,8 @@ def settings_update_profile(request: HttpRequest):
                 )
                 response.status_code = 400
                 return response
-            elif email_verification and email_verification.verified:
-                email_verification.delete()
             else:
-                response = JsonResponse(
-                    data={
-                        'success': False,
-                        'error': 'Email is not verified'
-                    }
-                )
-                response.status_code = 400
-                return response
+                email_verification.delete()
             user.email = email
         if phone_number:
             if (user.phone_number != phone_number) and (

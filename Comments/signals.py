@@ -12,7 +12,7 @@ def comment_created(sender: Type[Comment], instance: Comment, created: bool, **k
     if created:
         instance.post.comments_count += 1
         instance.post.save()
-        if not instance.post.user == instance.user:
+        if instance.post.user != instance.user:
             Notification.create_notification(
                 recipient=instance.post.user,
                 notification_type='comment',

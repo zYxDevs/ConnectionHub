@@ -48,7 +48,6 @@ def report_user(request: HttpRequest, username: str):
                 'success': True
             }
         )
-        return response
     else:
         response = JsonResponse(
             data={
@@ -56,4 +55,5 @@ def report_user(request: HttpRequest, username: str):
             }
         )
         response.status_code = 405
-        return response
+
+    return response

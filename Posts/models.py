@@ -60,8 +60,7 @@ class Post(models.Model):
         return {
             'id': self.id,
             'user': self.user.get_context(
-                logined_user=user if not admin_data else None,
-                full_data=True
+                logined_user=None if admin_data else user, full_data=True
             ),
             'image': self.image.url,
             'caption': self.caption,
@@ -69,20 +68,14 @@ class Post(models.Model):
             'likes': self.likes_count,
             'dislikes': self.dislikes_count,
             'liked': self.reactions.filter(user=user, reaction='like').exists(),
-            'disliked': self.reactions.filter(user=user, reaction='dislike').exists(),
+            'disliked': self.reactions.filter(
+                user=user, reaction='dislike'
+            ).exists(),
             'comments_count': self.comments_count,
             'comments': comments,
             'saved': self.saved_by.filter(user=user).exists(),
-            'url': reverse(
-                'post-detail',
-                kwargs={
-                    'post_id': self.id
-                }
-            ),
-            'tags': [
-                tag.name.replace('#', '')
-                for tag in self.tags.all()
-            ],
+            'url': reverse('post-detail', kwargs={'post_id': self.id}),
+            'tags': [tag.name.replace('#', '') for tag in self.tags.all()],
         }
 
 

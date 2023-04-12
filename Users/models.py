@@ -53,7 +53,7 @@ class User(AbstractUser):
     admin_objects = models.Manager()
 
     def __str__(self):
-        return '@' + self.username
+        return f'@{self.username}'
 
     @classmethod
     def not_blocked_users(cls, logined_user: 'User'):
@@ -73,22 +73,26 @@ class User(AbstractUser):
         Blocks.objects.filter(user=user, blocked_by=self).delete()
 
     def get_all_followings(self):
-        list_of_followings = [following.followee for following in self.followings.all().order_by('-followed_at')]
-        return list_of_followings
+        return [
+            following.followee
+            for following in self.followings.all().order_by('-followed_at')
+        ]
 
     def get_all_followers(self):
-        list_of_followers = [follower.follower for follower in self.followers.all()]
-        return list_of_followers
+        return [follower.follower for follower in self.followers.all()]
 
     def get_suggestions(self):
-        users_not_followed = User.not_blocked_users(self).filter(
-            followers__follower__followers__follower=self
-        ).exclude(
-            Q(username=self.username) |
-            Q(followers__follower=self) |
-            Q(follow_requests__follower=self)
-        ).distinct().order_by('-followers_count')[:10]
-        return users_not_followed
+        return (
+            User.not_blocked_users(self)
+            .filter(followers__follower__followers__follower=self)
+            .exclude(
+                Q(username=self.username)
+                | Q(followers__follower=self)
+                | Q(follow_requests__follower=self)
+            )
+            .distinct()
+            .order_by('-followers_count')[:10]
+        )
 
     def get_new_messages(self) -> QuerySet:
         return self.receiver_messages.filter(viewed=False)
@@ -133,7 +137,7 @@ class User(AbstractUser):
             'blocked': self.blockers.filter(blocked_by=logined_user).exists(),
             'private': self.settings.private_account
         }
-        if (not (admin_data or full_data)) and self.is_banned:
+        if not admin_data and not full_data and self.is_banned:
             data = {
                 'username': self.username,
                 'fullname': 'Not Available',
@@ -155,12 +159,13 @@ class User(AbstractUser):
             data['banned'] = self.is_banned
 
         if extra_data:
-            data.update(extra_data)
+            data |= extra_data
         return data
 
     def search_users(self, query: str):
-        results = User.not_blocked_users(logined_user=self).filter(username__icontains=query)[:10]
-        return results
+        return User.not_blocked_users(logined_user=self).filter(
+            username__icontains=query
+        )[:10]
 
 
 class Follow(models.Model):

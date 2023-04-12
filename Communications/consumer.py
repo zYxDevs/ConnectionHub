@@ -79,11 +79,7 @@ class ChatConsumer(AsyncConsumer):
 
     async def chat_message(self, event):
         response = json.loads(event['text'])
-        if response['sender']['id'] == self.user.id:
-            response['is_sender'] = True
-        else:
-            response['is_sender'] = False
-
+        response['is_sender'] = response['sender']['id'] == self.user.id
         await self.send({
             'type': 'websocket.send',
             'text': json.dumps(response)
@@ -93,18 +89,11 @@ class ChatConsumer(AsyncConsumer):
     def get_user_object(self, username: str):
         from Users.models import User
         qs = User.objects.filter(username=username)
-        if qs.exists():
-            obj = qs.first()
-        else:
-            obj = None
-        return obj
+        return qs.first() if qs.exists() else None
 
     @database_sync_to_async
     def create_chat_message(self, message: str, other_user: 'Users.User'):
         from .models import Message
-        obj = Message.objects.create(
-            message=message,
-            sender=self.user,
-            receiver=other_user
+        return Message.objects.create(
+            message=message, sender=self.user, receiver=other_user
         )
-        return obj

@@ -29,7 +29,6 @@ class OtpVerification(models.Model):
     def send_otp(self):
         if not self.otp:
             self.generate_otp()
-        subject = 'OTP Validation of ConnectionHub'
         html_message = render_to_string(
             'otp-email.html',
             {
@@ -38,6 +37,7 @@ class OtpVerification(models.Model):
             }
         )
         if self.type == 'email':
+            subject = 'OTP Validation of ConnectionHub'
             message = EmailMessage(
                 subject=subject,
                 body=html_message,
@@ -50,8 +50,8 @@ class OtpVerification(models.Model):
             TWILIO_AUTH_TOKEN = env('TWILIO_AUTH_TOKEN')
             client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
             verification = client.verify.v2.services(TWILIO_ACCOUNT_SID) \
-                .verifications \
-                .create(to=self.phone_number, channel="sms")
+                    .verifications \
+                    .create(to=self.phone_number, channel="sms")
 
     def verify_otp(self):
         current_date = timezone.now()
