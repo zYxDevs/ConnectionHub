@@ -91,7 +91,11 @@ def register_view(request):
         email_verification = OtpVerification.objects.filter(
             username=username,
         ).first()
-        if email_verification and not email_verification.verified:
+        if (
+            email_verification
+            and not email_verification.verified
+            or not email_verification
+        ):
             response = JsonResponse(
                 data={
                     'success': False,
@@ -100,17 +104,8 @@ def register_view(request):
             )
             response.status_code = 400
             return response
-        elif email_verification and email_verification.verified:
-            email_verification.delete()
         else:
-            response = JsonResponse(
-                data={
-                    'success': False,
-                    'error': 'Email is not verified'
-                }
-            )
-            response.status_code = 400
-            return response
+            email_verification.delete()
         user = User.objects.create_user(
             username=username,
             password=password,
@@ -168,7 +163,7 @@ def forgot_password_view(request):
             )
             response.status_code = 400
             return response
-        elif email_verification and email_verification.verified:
+        elif email_verification:
             email_verification.delete()
         else:
             response = JsonResponse(
@@ -242,8 +237,8 @@ def verify_otp(request):
     if request.method == 'POST':
         otp: str = request.POST.get('otp')
         email: str = request.POST.get('email')
-        username: str = request.POST.get('username')
         if not email:
+            username: str = request.POST.get('username')
             user = get_object_or_404(User, username=username)
             email = user.email
         email = email.lower()
@@ -254,15 +249,12 @@ def verify_otp(request):
         ).first()
         if email_verification and email_verification.verify_otp():
             return JsonResponse({'success': True})
-        else:
-            response = JsonResponse(
-                {
-                    'success': False,
-                    'error': 'OTP is invalid or expired'
-                }
-            )
-            response.status_code = 400
-            return response
+        response = JsonResponse(
+            {
+                'success': False,
+                'error': 'OTP is invalid or expired'
+            }
+        )
     else:
         response = JsonResponse(
             {
@@ -270,8 +262,9 @@ def verify_otp(request):
                 'error': 'Invalid request'
             }
         )
-        response.status_code = 400
-        return response
+
+    response.status_code = 400
+    return response
 
 
 def check_username_availability(request: HttpRequest):

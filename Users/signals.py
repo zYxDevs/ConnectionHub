@@ -94,7 +94,7 @@ def unfollow_signal(sender: Type[Follow], instance: Follow, **kwargs):
 
 @receiver(pre_save, sender=User)
 def user_updated(sender, **kwargs):
-    user: User = kwargs.get('instance', None)
+    user: User = kwargs.get('instance')
     if not user:
         return
     if not User.objects.filter(pk=user.pk).exists():

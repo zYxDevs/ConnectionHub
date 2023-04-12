@@ -12,9 +12,9 @@ def post_detail_page(request: HttpRequest, post_id: int):
     logined_user = request.user
     post = get_object_or_404(Post.not_blocked_posts(logined_user), id=post_id)
     if (
-            post.user.settings.private_account and
-            not post.user.followers.filter(follower=logined_user).exists()
-    ) and not logined_user == post.user:
+        post.user.settings.private_account
+        and not post.user.followers.filter(follower=logined_user).exists()
+    ) and logined_user != post.user:
         return redirect(
             reverse(
                 'profile-pages',
@@ -40,17 +40,14 @@ def like_post(request: HttpRequest, post_id: int):
     if not reaction:
         Reaction.objects.create(user=request.user, post=post, reaction='like')
         liked = True
-        disliked = False
     elif reaction.reaction == 'like':
         reaction.delete()
         liked = False
-        disliked = False
     else:
         reaction.reaction = 'like'
         reaction.save()
         liked = True
-        disliked = False
-
+    disliked = False
     post.refresh_from_db()
     return JsonResponse(
         data={
@@ -71,17 +68,14 @@ def dislike_post(request: HttpRequest, post_id: int):
     if not reaction:
         Reaction.objects.create(user=request.user, post=post, reaction='dislike')
         disliked = True
-        liked = False
     elif reaction.reaction == 'dislike':
         reaction.delete()
-        liked = False
         disliked = False
     else:
         reaction.reaction = 'dislike'
         reaction.save()
         disliked = True
-        liked = False
-
+    liked = False
     post.refresh_from_db()
     return JsonResponse(
         data={
@@ -127,11 +121,8 @@ def saved_posts(request: HttpRequest):
 
 @login_required(login_url='user-login')
 def tag_posts(request: HttpRequest, tag_name: str):
-    tag = Tag.objects.filter(name='#' + tag_name).first()
-    if not tag:
-        posts = []
-    else:
-        posts = tag.posts.all()
+    tag = Tag.objects.filter(name=f'#{tag_name}').first()
+    posts = tag.posts.all() if tag else []
     posts_rows = [[], []]
     for index, post in enumerate(
             iterable=posts,
@@ -152,40 +143,7 @@ def tag_posts(request: HttpRequest, tag_name: str):
 
 @login_required(login_url='user-login')
 def new_post(request: HttpRequest):
-    if request.method == 'POST':
-        try:
-            image = request.FILES['image']
-            caption = request.POST['caption']
-            tags = request.POST['tags']
-            location = request.POST['location']
-        except KeyError:
-            response = JsonResponse(
-                data={
-                    'error': 'Invalid data',
-                }
-            )
-            response.status_code = 400
-            return response
-        post = Post.objects.create(
-            user=request.user,
-            image=image,
-            caption=caption,
-            location=location
-        )
-        for tag_name in str(tags).strip().split(' '):
-            tag_name = tag_name.strip()
-            if not tag_name:
-                continue
-            tag, _ = Tag.objects.get_or_create(name=tag_name)
-            post.tags.add(tag)
-
-        return JsonResponse(
-            data={
-                'success': 'Logged in successfully',
-                'redirect': reverse('post-detail', args=[post.id])
-            }
-        )
-    else:
+    if request.method != 'POST':
         return render(
             request,
             'new-post.html',
@@ -195,12 +153,44 @@ def new_post(request: HttpRequest):
                 'new_notifications': request.user.get_new_notifications().count()
             }
         )
+    try:
+        image = request.FILES['image']
+        caption = request.POST['caption']
+        tags = request.POST['tags']
+        location = request.POST['location']
+    except KeyError:
+        response = JsonResponse(
+            data={
+                'error': 'Invalid data',
+            }
+        )
+        response.status_code = 400
+        return response
+    post = Post.objects.create(
+        user=request.user,
+        image=image,
+        caption=caption,
+        location=location
+    )
+    for tag_name in str(tags).strip().split(' '):
+        tag_name = tag_name.strip()
+        if not tag_name:
+            continue
+        tag, _ = Tag.objects.get_or_create(name=tag_name)
+        post.tags.add(tag)
+
+    return JsonResponse(
+        data={
+            'success': 'Logged in successfully',
+            'redirect': reverse('post-detail', args=[post.id])
+        }
+    )
 
 
 @login_required(login_url='user-login')
 def delete_post(request: HttpRequest, post_id):
     post = get_object_or_404(Post, id=post_id)
-    if not post.user == request.user:
+    if post.user != request.user:
         return JsonResponse(
             data={
                 'success': False,

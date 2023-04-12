@@ -10,7 +10,7 @@ def pre_like_dislike(sender: Type[Reaction], instance: Reaction, created: bool, 
     if created:
         if instance.reaction == 'like':
             instance.post.likes_count += 1
-            if not instance.post.user == instance.user:
+            if instance.post.user != instance.user:
                 Notification.create_notification(
                     recipient=instance.post.user,
                     notification_type='like',
@@ -20,22 +20,21 @@ def pre_like_dislike(sender: Type[Reaction], instance: Reaction, created: bool, 
         else:
             instance.post.dislikes_count += 1
         instance.post.save()
-    else:
-        if instance._old_reaction != instance.reaction:
-            if instance.reaction == 'like':
-                instance.post.likes_count += 1
-                instance.post.dislikes_count -= 1
-                if not instance.post.user == instance.user:
-                    Notification.create_notification(
-                        recipient=instance.post.user,
-                        notification_type='like',
-                        content=f'{instance.user} liked your post',
-                        arg_value=str(instance.post.id)
-                    )
-            else:
-                instance.post.dislikes_count += 1
-                instance.post.likes_count -= 1
-            instance.post.save()
+    elif instance._old_reaction != instance.reaction:
+        if instance.reaction == 'like':
+            instance.post.likes_count += 1
+            instance.post.dislikes_count -= 1
+            if instance.post.user != instance.user:
+                Notification.create_notification(
+                    recipient=instance.post.user,
+                    notification_type='like',
+                    content=f'{instance.user} liked your post',
+                    arg_value=str(instance.post.id)
+                )
+        else:
+            instance.post.dislikes_count += 1
+            instance.post.likes_count -= 1
+        instance.post.save()
 
 
 def delete_like_dislike(sender: Type[Reaction], instance: Reaction, **kwargs):

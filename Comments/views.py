@@ -45,7 +45,7 @@ def comments(request: HttpRequest, post_id: int):
 @login_required(login_url='user-login')
 def delete_comment(request: HttpRequest, comment_id: int):
     comment = get_object_or_404(Comment.admin_objects, id=comment_id)
-    if not comment.user.id == request.user.id:
+    if comment.user.id != request.user.id:
         return JsonResponse(
             data={
                 'success': False,
